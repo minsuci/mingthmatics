@@ -236,6 +236,100 @@
       .plan-cards { grid-template-columns: 1fr; }
     }
   </style>
+
+  <style>
+    /* 관리자 편집 모드 */
+    #admin-bar {
+      position: fixed; bottom: 0; left: 0; right: 0;
+      background: #1a3a5c; color: #fff;
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 10px 20px; z-index: 9999;
+      box-shadow: 0 -2px 12px rgba(0,0,0,0.2);
+      font-family: 'Noto Sans KR', sans-serif; font-size: 13px;
+    }
+    #admin-bar .ab-left { display: flex; align-items: center; gap: 10px; }
+    #admin-bar .ab-badge {
+      background: #e74c3c; color: #fff; font-size: 10px; font-weight: 700;
+      padding: 3px 8px; border-radius: 20px; letter-spacing: 0.5px;
+    }
+    #admin-bar button {
+      border: none; border-radius: 6px; padding: 7px 16px;
+      font-family: 'Noto Sans KR', sans-serif; font-size: 12px;
+      font-weight: 600; cursor: pointer; transition: opacity 0.15s;
+    }
+    #admin-bar button:hover { opacity: 0.85; }
+    #btn-save { background: #27ae60; color: #fff; }
+    #btn-reset { background: #e67e22; color: #fff; }
+    #btn-logout { background: rgba(255,255,255,0.15); color: #fff; }
+    body.edit-mode [contenteditable="true"] {
+      outline: 2px dashed #e74c3c; border-radius: 3px;
+      min-width: 20px; min-height: 14px; cursor: text;
+    }
+    body.edit-mode [contenteditable="true"]:focus {
+      outline: 2px solid #e74c3c; background: #fff9f9;
+    }
+    #login-overlay {
+      display: none; position: fixed; inset: 0;
+      background: rgba(0,0,0,0.55); z-index: 10000;
+      align-items: center; justify-content: center;
+    }
+    #login-overlay.show { display: flex; }
+    #login-box {
+      background: #fff; border-radius: 14px;
+      padding: 2rem 2.2rem; width: 280px; text-align: center;
+      box-shadow: 0 8px 40px rgba(0,0,0,0.25);
+    }
+    #login-box .lb-logo {
+      background: #1a3a5c; color: #fff;
+      font-family: 'Playfair Display', serif;
+      font-size: 18px; font-weight: 600; letter-spacing: 2px;
+      padding: 7px 14px; border-radius: 5px;
+      display: inline-block; margin-bottom: 1.2rem;
+      text-decoration: underline; text-underline-offset: 3px;
+    }
+    #login-box h3 { font-size: 14px; color: #1a3a5c; margin-bottom: 4px; }
+    #login-box p { font-size: 11px; color: #888; margin-bottom: 1.2rem; }
+    #pw-input {
+      width: 100%; border: 1.5px solid #dde3ec; border-radius: 8px;
+      padding: 10px 14px; font-size: 22px; letter-spacing: 10px;
+      text-align: center; font-family: monospace;
+      outline: none; margin-bottom: 10px;
+    }
+    #pw-input:focus { border-color: #1a3a5c; }
+    #pw-error { font-size: 11px; color: #e74c3c; min-height: 16px; margin-bottom: 8px; }
+    #btn-login {
+      width: 100%; background: #1a3a5c; color: #fff;
+      border: none; border-radius: 8px; padding: 11px;
+      font-size: 13px; font-weight: 700; cursor: pointer;
+      font-family: 'Noto Sans KR', sans-serif;
+    }
+    #btn-login:hover { background: #2d5a8e; }
+    #btn-cancel-login {
+      width: 100%; background: none; color: #888;
+      border: none; padding: 8px; font-size: 12px;
+      cursor: pointer; margin-top: 4px;
+      font-family: 'Noto Sans KR', sans-serif;
+    }
+    #toast {
+      position: fixed; bottom: 70px; left: 50%; transform: translateX(-50%);
+      background: #27ae60; color: #fff; border-radius: 20px;
+      padding: 10px 22px; font-size: 13px; font-weight: 600;
+      opacity: 0; transition: opacity 0.3s; z-index: 9998;
+      pointer-events: none; white-space: nowrap;
+    }
+    #toast.show { opacity: 1; }
+    #fab-admin {
+      position: fixed; bottom: 20px; right: 20px;
+      background: #1a3a5c; color: #fff;
+      border: none; border-radius: 50%; width: 46px; height: 46px;
+      font-size: 20px; cursor: pointer; z-index: 9990;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+      display: flex; align-items: center; justify-content: center;
+    }
+    #fab-admin:hover { opacity: 0.85; }
+    #fab-admin.hidden { display: none; }
+  </style>
+
 </head>
 <body>
 <div class="wrap">
@@ -570,5 +664,189 @@
   </div>
 
 </div>
+
+<!-- 관리자 진입 버튼 -->
+<button id="fab-admin" title="관리자 로그인">✏️</button>
+
+<!-- 로그인 오버레이 -->
+<div id="login-overlay">
+  <div id="login-box">
+    <div class="lb-logo">CLIMATH</div>
+    <h3>관리자 편집 모드</h3>
+    <p>비밀번호 4자리를 입력하세요</p>
+    <input id="pw-input" type="password" maxlength="4" inputmode="numeric" placeholder="••••" />
+    <div id="pw-error"></div>
+    <button id="btn-login">확인</button>
+    <button id="btn-cancel-login">취소</button>
+  </div>
+</div>
+
+<!-- 관리자 바 (로그인 후 표시) -->
+<div id="admin-bar" style="display:none;">
+  <div class="ab-left">
+    <span class="ab-badge">ADMIN</span>
+    <span>편집 모드 — 텍스트를 클릭해서 수정하세요</span>
+  </div>
+  <div style="display:flex;gap:8px;">
+    <button id="btn-save">💾 저장</button>
+    <button id="btn-reset">↩ 초기화</button>
+    <button id="btn-logout">로그아웃</button>
+  </div>
+</div>
+
+<!-- 저장 토스트 -->
+<div id="toast">✅ 저장되었습니다</div>
+
+<script>
+(function() {
+  const PW = '0728';
+  const STORAGE_KEY = 'climath_s_content';
+  const EDITABLE_SELECTOR = [
+    '.header-text h1',
+    '.header-text p',
+    '.section-title',
+    '.time-table td',
+    '.curriculum-box-title',
+    '.curr-item',
+    '.plan-card-book',
+    '.plan-card-period',
+    '.plan-card-desc',
+    '.meta-badge',
+    '.cal-class',
+    '.cal-topic',
+    '.cal-range',
+    '.cal-special',
+    '.cal-date',
+    '.jibo-main',
+    '.week-card-header',
+    '.day-content',
+    '.footer-note',
+    '.tt-card-header',
+    '.tt-content',
+    '.curriculum-box-title',
+  ].join(',');
+
+  const fab = document.getElementById('fab-admin');
+  const overlay = document.getElementById('login-overlay');
+  const adminBar = document.getElementById('admin-bar');
+  const pwInput = document.getElementById('pw-input');
+  const pwError = document.getElementById('pw-error');
+  const toast = document.getElementById('toast');
+
+  // 저장된 내용 불러오기
+  function loadSaved() {
+    try {
+      const saved = localStorage.getItem(STORAGE_KEY);
+      if (!saved) return;
+      const data = JSON.parse(saved);
+      data.forEach(function(item) {
+        const el = document.querySelector('[data-eid="' + item.id + '"]');
+        if (el) el.innerHTML = item.html;
+      });
+    } catch(e) {}
+  }
+
+  // 요소에 data-eid 부여
+  function assignIds() {
+    document.querySelectorAll(EDITABLE_SELECTOR).forEach(function(el, i) {
+      el.setAttribute('data-eid', 'e' + i);
+    });
+  }
+
+  // 편집 가능하게 설정
+  function enableEdit() {
+    document.querySelectorAll(EDITABLE_SELECTOR).forEach(function(el) {
+      el.setAttribute('contenteditable', 'true');
+      el.setAttribute('spellcheck', 'false');
+    });
+    document.body.classList.add('edit-mode');
+    adminBar.style.display = 'flex';
+    fab.classList.add('hidden');
+    document.body.style.paddingBottom = '60px';
+  }
+
+  // 편집 불가 설정
+  function disableEdit() {
+    document.querySelectorAll('[contenteditable]').forEach(function(el) {
+      el.removeAttribute('contenteditable');
+    });
+    document.body.classList.remove('edit-mode');
+    adminBar.style.display = 'none';
+    fab.classList.remove('hidden');
+    document.body.style.paddingBottom = '';
+  }
+
+  // 저장
+  function saveContent() {
+    const data = [];
+    document.querySelectorAll('[data-eid]').forEach(function(el) {
+      data.push({ id: el.getAttribute('data-eid'), html: el.innerHTML });
+    });
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+    showToast('✅ 저장되었습니다');
+  }
+
+  // 초기화
+  function resetContent() {
+    if (!confirm('모든 내용을 원래대로 초기화할까요?')) return;
+    localStorage.removeItem(STORAGE_KEY);
+    showToast('↩ 초기화되었습니다');
+    setTimeout(function() { location.reload(); }, 800);
+  }
+
+  // 토스트 메시지
+  function showToast(msg) {
+    toast.textContent = msg;
+    toast.classList.add('show');
+    setTimeout(function() { toast.classList.remove('show'); }, 2000);
+  }
+
+  // 로그인
+  fab.addEventListener('click', function() {
+    overlay.classList.add('show');
+    pwInput.value = '';
+    pwError.textContent = '';
+    setTimeout(function() { pwInput.focus(); }, 100);
+  });
+
+  function tryLogin() {
+    if (pwInput.value === PW) {
+      overlay.classList.remove('show');
+      enableEdit();
+    } else {
+      pwError.textContent = '비밀번호가 틀렸습니다';
+      pwInput.value = '';
+      pwInput.focus();
+    }
+  }
+
+  document.getElementById('btn-login').addEventListener('click', tryLogin);
+  pwInput.addEventListener('keydown', function(e) {
+    if (e.key === 'Enter') tryLogin();
+  });
+  document.getElementById('btn-cancel-login').addEventListener('click', function() {
+    overlay.classList.remove('show');
+  });
+
+  // 로그아웃
+  document.getElementById('btn-logout').addEventListener('click', function() {
+    disableEdit();
+  });
+
+  // 저장 / 초기화
+  document.getElementById('btn-save').addEventListener('click', saveContent);
+  document.getElementById('btn-reset').addEventListener('click', resetContent);
+
+  // 오버레이 바깥 클릭 시 닫기
+  overlay.addEventListener('click', function(e) {
+    if (e.target === overlay) overlay.classList.remove('show');
+  });
+
+  // 초기화
+  assignIds();
+  loadSaved();
+})();
+</script>
+
 </body>
 </html>
